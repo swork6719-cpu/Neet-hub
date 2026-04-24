@@ -1,0 +1,98 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "MCQSet": {
+      "title": "MCQ Set",
+      "description": "A collection of generated MCQs from a specific PDF",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "sourceFileName": { "type": "string" },
+        "topic": { "type": "string" },
+        "questions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/entities/MCQ"
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "sourceFileName", "questions"]
+    },
+    "MCQ": {
+      "title": "MCQ",
+      "description": "A single multiple choice question",
+      "type": "object",
+      "properties": {
+        "question": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "correctAnswer": { "type": "string" },
+        "explanation": { "type": "string" },
+        "difficulty": { "type": "string" },
+        "concept": { "type": "string" }
+      },
+      "required": ["question", "options", "correctAnswer", "explanation"]
+    },
+    "OfficialPaper": {
+      "title": "Official Previous Year Paper",
+      "description": "Metadata for past NEET exam papers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "year": { "type": "integer" },
+        "title": { "type": "string" },
+        "subject": { "type": "string" },
+        "pdfUrl": { "type": "string" },
+        "questionsCount": { "type": "integer" }
+      },
+      "required": ["year", "title", "pdfUrl"]
+    },
+    "QuestionFeedback": {
+      "title": "Question Feedback",
+      "description": "User flags or feedback for specific questions",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "setId": { "type": "string" },
+        "questionIndex": { "type": "integer" },
+        "reason": { "type": "string" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "setId", "questionIndex", "reason", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/mcqSets/{setId}": {
+      "schema": "MCQSet",
+      "description": "Generated MCQ sets"
+    },
+    "/officialPapers/{paperId}": {
+      "schema": "OfficialPaper",
+      "description": "Collection of previous year NEET papers"
+    },
+    "/questionFeedback/{feedbackId}": {
+      "schema": "QuestionFeedback",
+      "description": "User feedback on questions"
+    }
+  }
+}

@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email == "amitkumaryogi2025@gmail.com";
+    }
+
+    function isVerified() {
+      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.email == "amitkumaryogi2025@gmail.com");
+    }
+
+    // Connectivity test document
+    match /test/connection {
+      allow get: if true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // MCQSet Validation
+    function isValidMCQSet(data) {
+      return (data.userId == request.auth.uid || (data.isOfficial == true && isAdmin()))
+        && data.sourceFileName is string && data.sourceFileName.size() <= 256
+        && data.topic is string && data.topic.size() <= 256
+        && data.questions is list && data.questions.size() > 0 && data.questions.size() <= 1200
+        && (!('language' in data) || (data.language is string && data.language.size() <= 50))
+        && (!('isOfficial' in data) || data.isOfficial is bool)
+        && (!('officialYear' in data) || data.officialYear == null || data.officialYear is int);
+    }
+
+    function isValidMCQSetUpdate(existingData, incomingData) {
+      return isOwner(existingData.userId)
+        && incomingData.userId == existingData.userId
+        && incomingData.sourceFileName == existingData.sourceFileName
+        && incomingData.topic == existingData.topic
+        && incomingData.createdAt == existingData.createdAt
+        && (!('language' in incomingData) || incomingData.language == existingData.language)
+        && incomingData.questions is list && incomingData.questions.size() <= 1300
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['questions']);
+    }
+
+    function isValidFeedback(data) {
+      return data.userId == request.auth.uid
+        && data.setId is string && data.setId.size() <= 128
+        && data.questionIndex is int && data.questionIndex >= 0
+        && data.reason is string && data.reason.size() <= 100
+        && (!('comment' in data) || (data.comment is string && data.comment.size() <= 500))
+        && data.createdAt == request.time;
+    }
+
+    // User Profile
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && incoming().uid == request.auth.uid && isVerified();
+    }
+
+    // MCQ Sets
+    match /mcqSets/{setId} {
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.isOfficial == true);
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.isOfficial == true);
+      allow create: if isVerified() && isValidMCQSet(incoming()) && incoming().createdAt == request.time;
+      allow update: if (isVerified() && isValidMCQSetUpdate(resource.data, incoming())) || (isAdmin() && incoming().isOfficial == true);
+      allow delete: if isAdmin(); // Only admins can delete for now
+    }
+
+    // Question Feedback
+    match /questionFeedback/{feedbackId} {
+      allow create: if isVerified() && isValidFeedback(incoming());
+      allow read: if false; // Only admins should read feedback for now
+    }
+
+    // Official Papers Catalogue
+    match /officialPapers/{paperId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}
