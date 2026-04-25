@@ -158,6 +158,47 @@ export interface ChatMessage {
   text: string;
 }
 
+export interface AIAppBuildInput {
+  idea: string;
+  targetUsers?: string;
+  platform?: string;
+  monetization?: string;
+  timeline?: string;
+}
+
+export async function generateAIAppBuildPlan(input: AIAppBuildInput): Promise<string> {
+  const prompt = `
+You are an elite AI product architect.
+
+Create a complete "full AI based app build" plan using the details below.
+Return clean markdown with these exact sections:
+1) Product Summary
+2) Core AI Features (MVP vs V2)
+3) Suggested Tech Stack
+4) System Architecture
+5) Data + Prompt Strategy
+6) 8-Week Build Roadmap
+7) Deployment + DevOps Checklist
+8) Risks + Mitigations
+9) Launch KPIs
+
+Keep it practical and implementation-first.
+
+APP IDEA: ${input.idea}
+TARGET USERS: ${input.targetUsers || "Not specified"}
+PLATFORM: ${input.platform || "Web app"}
+MONETIZATION: ${input.monetization || "Not specified"}
+TIMELINE GOAL: ${input.timeline || "8 weeks"}
+`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: [{ parts: [{ text: prompt }] }],
+  });
+
+  return response.text;
+}
+
 export async function* chatWithGeminiStream(
   message: string,
   history: ChatMessage[] = [],

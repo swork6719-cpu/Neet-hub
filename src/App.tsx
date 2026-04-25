@@ -25,10 +25,12 @@ import {
 import { auth, db } from './lib/firebase';
 import { extractTextFromPdf, pdfToImages } from './services/pdfService';
 import { generateMCQsFromContent, generateSimilarMCQ, MCQ } from './services/geminiService';
+import { generateAIAppBuildPlan } from './services/geminiService';
 import { exportMCQsToPdf } from './services/exportService';
 import { seedOfficialPapers } from './lib/seeding';
 import { ChatBot } from './components/ChatBot';
 import { motion, AnimatePresence } from 'motion/react';
+import ReactMarkdown from 'react-markdown';
 import { 
   FileUp, 
   LayoutDashboard, 
@@ -495,6 +497,41 @@ export default function App() {
 // --- Page Components ---
 
 function LandingPage({ onLogin }: { onLogin: () => void, key?: string }) {
+  const [idea, setIdea] = useState('');
+  const [targetUsers, setTargetUsers] = useState('');
+  const [platform, setPlatform] = useState('Web + Mobile');
+  const [monetization, setMonetization] = useState('');
+  const [timeline, setTimeline] = useState('8 weeks');
+  const [plan, setPlan] = useState('');
+  const [isPlanning, setIsPlanning] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
+
+  const handleGeneratePlan = async () => {
+    if (!idea.trim()) {
+      setPlanError('Please enter your app idea to generate a build plan.');
+      return;
+    }
+
+    setIsPlanning(true);
+    setPlanError(null);
+
+    try {
+      const generatedPlan = await generateAIAppBuildPlan({
+        idea,
+        targetUsers,
+        platform,
+        monetization,
+        timeline
+      });
+      setPlan(generatedPlan);
+    } catch (err) {
+      console.error(err);
+      setPlanError('Failed to generate AI app build plan. Please try again.');
+    } finally {
+      setIsPlanning(false);
+    }
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -533,6 +570,69 @@ function LandingPage({ onLogin }: { onLogin: () => void, key?: string }) {
             <p className="text-sm text-gray-500">{feat.desc}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mt-16 w-full max-w-5xl bg-white rounded-3xl border border-gray-100 p-8 text-left shadow-xl shadow-[#5A5A40]/5">
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
+          <h3 className="text-2xl font-bold tracking-tight">Full AI App Build Assistant</h3>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-[#5A5A40] bg-[#5A5A40]/10 px-3 py-1 rounded-full">
+            New
+          </span>
+        </div>
+        <p className="text-sm text-gray-500 mb-6">
+          Describe your idea and get an end-to-end AI product build roadmap (MVP scope, architecture, stack, and execution plan).
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <textarea
+            value={idea}
+            onChange={(e) => setIdea(e.target.value)}
+            placeholder="Example: Build an AI study coach that personalizes daily revision plans from students' weak topics."
+            className="md:col-span-2 min-h-28 w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-[#5A5A40]/10 focus:border-[#5A5A40]/30"
+          />
+          <input
+            value={targetUsers}
+            onChange={(e) => setTargetUsers(e.target.value)}
+            placeholder="Target users (e.g., NEET students in Class 11/12)"
+            className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-[#5A5A40]/10 focus:border-[#5A5A40]/30"
+          />
+          <input
+            value={platform}
+            onChange={(e) => setPlatform(e.target.value)}
+            placeholder="Platform (e.g., Web, Android, iOS)"
+            className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-[#5A5A40]/10 focus:border-[#5A5A40]/30"
+          />
+          <input
+            value={monetization}
+            onChange={(e) => setMonetization(e.target.value)}
+            placeholder="Monetization (e.g., Freemium + Pro subscription)"
+            className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-[#5A5A40]/10 focus:border-[#5A5A40]/30"
+          />
+          <input
+            value={timeline}
+            onChange={(e) => setTimeline(e.target.value)}
+            placeholder="Timeline goal (e.g., MVP in 8 weeks)"
+            className="w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-[#5A5A40]/10 focus:border-[#5A5A40]/30"
+          />
+        </div>
+
+        <div className="mt-5 flex items-center gap-3">
+          <button
+            onClick={handleGeneratePlan}
+            disabled={isPlanning}
+            className="px-5 py-3 bg-[#5A5A40] text-white rounded-full text-sm font-semibold hover:opacity-95 disabled:opacity-50 transition-opacity inline-flex items-center gap-2"
+          >
+            {isPlanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlusCircle className="w-4 h-4" />}
+            {isPlanning ? 'Building plan...' : 'Generate full AI app build plan'}
+          </button>
+          {planError && <span className="text-sm text-red-500">{planError}</span>}
+        </div>
+
+        {plan && (
+          <div className="mt-8 rounded-2xl border border-gray-100 p-6 bg-gray-50 prose prose-sm max-w-none">
+            <ReactMarkdown>{plan}</ReactMarkdown>
+          </div>
+        )}
       </div>
 
       <p className="mt-16 text-[10px] font-bold text-gray-300 uppercase tracking-[0.3em]">
